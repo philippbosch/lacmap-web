@@ -1,0 +1,105 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+        <meta name="viewport" content="width=default-width; user-scalable=no" />
+        <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+        <title>Leave-A-Comment</title>
+        <script type="text/javascript" charset="utf-8" src="jquery.js"></script>
+        <script type="text/javascript" charset="utf-8" src="json2.js"></script>
+        <script type="text/javascript" charset="utf-8" src="jquery.couch.js"></script>
+        <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=true"></script>
+        <script type="text/javascript" charset="utf-8" src="markermanager.js"></script>
+        <script type="text/javascript" charset="utf-8">
+            var timeout;
+            var map;
+            var markerManager;
+            
+            $(document).ready(function() {
+                // Initialize database
+                $.couch.serverUrl = 'http://couch.pb.io:5984';
+                $.couch.allDbs();
+                var db = $.couch.db('lact');
+                
+                // Initialize Google Map
+                var defaultLatLng = new google.maps.LatLng(52.5046036, 13.423749);
+                var myOptions = {
+                    'zoom': 15,
+                    'center': defaultLatLng,
+                    'mapTypeId': google.maps.MapTypeId.ROADMAP,
+                    'disableDefaultUI': true,
+                    'navigationControl': true,
+                    'navigationControlOptions': {
+                        'style': google.maps.NavigationControlStyle.SMALL
+                    },
+                    'backgroundColor': '#333',
+                    'noClear': true
+                };
+                map = new google.maps.Map(document.getElementById("map"), myOptions);
+                
+                markerManager = new MarkerManager(map);
+                
+                function createMarker(lat,lng,hint) {
+                    var marker_latlng = new google.maps.LatLng(lat, lng);
+                    
+                    var marker = new google.maps.Marker({
+                        'position': marker_latlng,
+                        'title': hint
+                    });
+                    google.maps.event.addListener(marker, 'click', function() {
+                        alert(hint);
+                    });
+                    return marker;
+                }
+                
+                function updateMarkers() {
+                    db.view('places/get_all_places', {
+                        'success': function(data) {
+                            markerManager.clearMarkers();
+                            var markers = [];
+                            $.each(data.rows, function() {
+                                markers.push(createMarker(this.value.latitude, this.value.longitude, this.value.address));
+                            });
+                            markerManager.addMarkers(markers,1);
+                            markerManager.refresh();
+                        }
+                    });
+                }
+                updateMarkers();
+                window.setInterval(updateMarkers, 5000);
+            });
+        </script>
+        <style type="text/css">
+            html, body, #map {
+                margin: 0;
+                padding: 0;
+                border: 0;
+                width: 100%;
+                height: 100%;
+            }
+            #info {
+                background: #000;
+                color: #FFF;
+                font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+                font-size: 200%;
+                text-shadow: #FFF 0 0 4px;
+                position: absolute;
+                z-index: 100;
+                width: 100%;
+                bottom: 0;
+                letter-spacing: -1px;
+            }
+            #info-inner {
+                margin: 18px 28px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="info">
+            <div id="info-inner">
+                Use your mobile to tag and find comments at <strong>lacmap.com</strong>
+                <!-- Tag &amp; find with your mobile at <strong>lacmap.com</strong> -->
+            </div>
+        </div>
+        <div id="map"></div>
+    </body>
+</html>
